@@ -15,11 +15,30 @@ import emailjs from "@emailjs/browser"
 type FormType = "customer" | "company"
 
 interface CustomerFormData {
-  from_name:string
   name: string
-  email: string
-  phone: string
-  comment: string
+  vehicle: string
+  part: string
+}
+
+/* WhatsApp al que llegan las consultas de venta particular (mismo que TAJIRO).
+   Va sin el + y sin espacios: código de país, 9, característica y número. */
+const WHATSAPP_NUMBER = "5493513020497"
+
+const customerLabels: Record<keyof CustomerFormData, string> = {
+  name: "Nombre",
+  vehicle: "Modelo y año de tu Volkswagen",
+  part: "Qué pieza necesitás",
+}
+
+const REQUIRED_MESSAGE = "Completá este campo para poder responderte."
+
+function WhatsAppIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden focusable="false" className={className}>
+      <path d="M17.47 14.38c-.3-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.65-2.05-.17-.3-.02-.46.13-.6.13-.14.3-.35.45-.53.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.6-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.06 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.7.63.71.22 1.36.19 1.87.12.57-.09 1.75-.72 2-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35z" />
+      <path d="M12.04 2C6.6 2 2.18 6.42 2.18 11.86c0 1.74.46 3.44 1.32 4.94L2.1 22l5.34-1.4a9.82 9.82 0 0 0 4.6 1.17h.01c5.43 0 9.85-4.42 9.85-9.86A9.8 9.8 0 0 0 19 4.87 9.78 9.78 0 0 0 12.04 2zm5.76 15.62a8.17 8.17 0 0 1-5.76 2.39h-.01a8.18 8.18 0 0 1-4.17-1.14l-.3-.18-3.1.81.83-3.02-.2-.31a8.15 8.15 0 0 1-1.25-4.35c0-4.52 3.68-8.2 8.2-8.2a8.14 8.14 0 0 1 5.8 2.41 8.13 8.13 0 0 1 2.4 5.8c0 4.52-3.68 8.19-8.2 8.19z" />
+    </svg>
+  )
 }
 
 interface CompanyFormData {
@@ -83,42 +102,27 @@ const [formType, setFormType] = useState<FormType>("customer")
   const customerForm = useForm<CustomerFormData>()
   const companyForm = useForm<CompanyFormData>()
 
-  const onSubmitCustomer = async (data: CustomerFormData) => {
-  setIsSubmitting(true)
+  const [customerStatus, setCustomerStatus] = useState("")
 
-  try {
-    await emailjs.send(
-      process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
-      process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
-      { 
-        ...data, 
-        form_type: "Consumidor Final",
-        from_name:"Kreisen"
+  /* Venta particular: igual que TAJIRO, no manda mail — abre WhatsApp con la
+     consulta ya escrita. */
+  const onSubmitCustomer = (data: CustomerFormData) => {
+    const lines = [
+      "*Consulta desde la web de KREISEN*",
+      "Tipo: Venta particular",
+      "",
+      ...(Object.keys(customerLabels) as (keyof CustomerFormData)[])
+        .filter((key) => data[key]?.trim())
+        .map((key) => `${customerLabels[key]}: ${data[key].trim()}`),
+    ]
 
-      },
-      process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
+    setCustomerStatus("Abriendo WhatsApp con tu consulta...")
+    window.open(
+      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(lines.join("\n"))}`,
+      "_blank",
+      "noopener,noreferrer",
     )
-
-    Swal.fire({
-      title: "¡Mensaje enviado!",
-      text: "Nos pondremos en contacto contigo lo antes posible.",
-      icon: "success",
-      confirmButtonText: "Aceptar",
-    })
-
-    customerForm.reset()
-  } catch (error) {
-    console.error("EmailJS Error:", error)
-    Swal.fire({
-      title: "Error",
-      text: "No se pudo enviar el mensaje. Inténtalo más tarde.",
-      icon: "error",
-      confirmButtonText: "Aceptar",
-    })
-  } finally {
-    setIsSubmitting(false)
   }
-}
 
 const onSubmitCompany = async (data: CompanyFormData) => {
   setIsSubmitting(true)
@@ -267,74 +271,56 @@ const onSubmitCompany = async (data: CompanyFormData) => {
                 onSubmit={customerForm.handleSubmit(onSubmitCustomer)}
                 className="space-y-6"
               >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="customer-name">Nombre completo</Label>
-                    <Input
-                      id="customer-name"
-                      {...customerForm.register("name", { required: "Este campo es requerido" })}
-                      className="mt-1"
-                    />
-                    {customerForm.formState.errors.name && (
-                      <p className="text-sm text-destructive mt-1">{customerForm.formState.errors.name.message}</p>
-                    )}
-                  </div>
-                  <div>
-                    <Label htmlFor="customer-phone">Teléfono</Label>
-                    <Input
-                      id="customer-phone"
-                      {...customerForm.register("phone", { required: "Este campo es requerido" })}
-                      className="mt-1"
-                    />
-                    {customerForm.formState.errors.phone && (
-                      <p className="text-sm text-destructive mt-1">{customerForm.formState.errors.phone.message}</p>
-                    )}
-                  </div>
-                </div>
-
                 <div>
-                  <Label htmlFor="customer-email">Email</Label>
+                  <Label htmlFor="customer-name">{customerLabels.name}</Label>
                   <Input
-                    id="customer-email"
-                    type="email"
-                    {...customerForm.register("email", {
-                      required: "Este campo es requerido",
-                      pattern: {
-                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                        message: "Email inválido",
-                      },
-                    })}
+                    id="customer-name"
+                    autoComplete="name"
+                    {...customerForm.register("name", { required: REQUIRED_MESSAGE, validate: (v) => !!v.trim() || REQUIRED_MESSAGE })}
                     className="mt-1"
                   />
-                  {customerForm.formState.errors.email && (
-                    <p className="text-sm text-destructive mt-1">{customerForm.formState.errors.email.message}</p>
+                  {customerForm.formState.errors.name && (
+                    <p className="text-sm text-destructive mt-1">{customerForm.formState.errors.name.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <Label htmlFor="customer-comment">Comentario</Label>
+                  <Label htmlFor="customer-vehicle">{customerLabels.vehicle}</Label>
+                  <Input
+                    id="customer-vehicle"
+                    {...customerForm.register("vehicle", { required: REQUIRED_MESSAGE, validate: (v) => !!v.trim() || REQUIRED_MESSAGE })}
+                    className="mt-1"
+                    placeholder="Ej.: Gol Trend 2016"
+                  />
+                  {customerForm.formState.errors.vehicle && (
+                    <p className="text-sm text-destructive mt-1">{customerForm.formState.errors.vehicle.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="customer-part">{customerLabels.part}</Label>
                   <Textarea
-                    id="customer-comment"
-                    {...customerForm.register("comment", { required: "Este campo es requerido" })}
+                    id="customer-part"
+                    {...customerForm.register("part", { required: REQUIRED_MESSAGE, validate: (v) => !!v.trim() || REQUIRED_MESSAGE })}
                     rows={4}
                     className="mt-1"
-                    placeholder="Cuéntanos qué repuesto necesitas o cómo podemos ayudarte..."
+                    placeholder="Contanos qué repuesto buscás o cómo podemos ayudarte..."
                   />
-                  {customerForm.formState.errors.comment && (
-                    <p className="text-sm text-destructive mt-1">{customerForm.formState.errors.comment.message}</p>
+                  {customerForm.formState.errors.part && (
+                    <p className="text-sm text-destructive mt-1">{customerForm.formState.errors.part.message}</p>
                   )}
                 </div>
 
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    "Enviando..."
-                  ) : (
-                    <>
-                      Enviar mensaje
-                      <Send className="ml-2 h-4 w-4" />
-                    </>
-                  )}
+                <Button type="submit" className="w-full">
+                  CONSULTAR
+                  <WhatsAppIcon className="ml-2 h-5 w-5" />
                 </Button>
+
+                {customerStatus && (
+                  <p role="status" className="text-sm font-medium text-foreground">
+                    {customerStatus}
+                  </p>
+                )}
               </motion.form>
             )}
 

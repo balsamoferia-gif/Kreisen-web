@@ -4,13 +4,12 @@ import { motion } from "framer-motion"
 import { MapPin, Phone, Mail, Facebook, Instagram, } from "lucide-react"
 import Image from "next/image"
 
-const brandLogos = [
-  { name: "Aequipe", src: "/images/marca-aequipe.png" },
+/* Kreisen va sin link: es esta misma página. */
+const brandLogos: { name: string; src: string; href?: string }[] = [
+  { name: "Aequipe", src: "/images/marca-aequipe.png", href: "https://aequipe.com.ar" },
   { name: "Kreisen", src: "/images/marca-kreisen.png" },
-  { name: "Tajiro", src: "/images/marca-tajiro.png" },
-  { name: "Oxion", src: "/images/marca-oxion.png" },
-  
-  
+  { name: "Tajiro", src: "/images/marca-tajiro.png", href: "https://tajiro.com.ar" },
+  { name: "Oxion", src: "/images/marca-oxion.png", href: "https://balsamo.com.ar" },
 ]
 
 const socialLinks = [
@@ -153,11 +152,21 @@ export function Footer() {
                     viewport={{ once: true }}
                     className="bg-white rounded-lg p-3 hover:shadow-lg transition-all duration-200"
                   >
-                    <img
-                      src={brand.src || "/placeholder.svg"}
-                      alt={brand.name}
-                      className="h-8 w-auto object-contain mx-auto"
-                    />
+                    {brand.href ? (
+                      <a href={brand.href} target="_blank" rel="noopener noreferrer" aria-label={`Ir al sitio de ${brand.name}`}>
+                        <img
+                          src={brand.src || "/placeholder.svg"}
+                          alt={brand.name}
+                          className="h-8 w-auto object-contain mx-auto"
+                        />
+                      </a>
+                    ) : (
+                      <img
+                        src={brand.src || "/placeholder.svg"}
+                        alt={brand.name}
+                        className="h-8 w-auto object-contain mx-auto"
+                      />
+                    )}
                   </motion.div>
                 ))}
               </div>
